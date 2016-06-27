@@ -1,7 +1,7 @@
 ---
 title: "Capstone Milestone Report"
 author: "James Sheldon"
-date: "Auguts 23, 2016"
+date: "Auguts 30, 2016"
 output: html_document
 ---
 
@@ -171,15 +171,17 @@ plot_n_grams <- function(data, title, num) {
 plot_n_grams(uni_corpus_freq,"Top Unigrams",20)
 plot_n_grams(bi_corpus_freq,"Top Bigrams",20)
 plot_n_grams(tri_corpus_freq,"Top Trigrams",20)
-wordcloud(corpus, max.words = 75, random.order = FALSE, colors = brewer.pal(10,"Dark2"))
+wordcloud(corpus, max.words = 75, random.order = FALSE, colors = brewer.pal(8,"Dark2"))
 ```
 
 
 
 ## Prediction & Shiny:
 
-
+This is a very resource intensive project. The skills and techniquest learned in the Data Science Specialization have certainly helped to build a foundation to tackle this project but it's going to take a lot of additional research and learning to reach a usable app for predictive modeling in any setting.
 
 ## System Info
 
+```{r Session}
 sessionInfo()
+```
