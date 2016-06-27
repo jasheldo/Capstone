@@ -1,0 +1,180 @@
+---
+title: "Capstone Milestone Report"
+author: "James Sheldon"
+date: "June 23, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Intent
+
+The goal of this project is just to display that you’ve gotten used to working with the data and that you are on track to create your prediction algorithm.
+
+## Assumption
+
+1. The data is already downloaded and available in the working directory.
+2. The necessary libraries are installed.
+
+## Reading Data and Basic Analysis
+
+### Introduction
+
+The capstone project involves taking language data from 12 sources (four languages and three major sources each) and attempt to create a Shiny predictive language application using machine learning. This is a hot area of research right now, especially with the rise of personal assistants like [Siri](http://www.apple.com/siri) and [Alexa](https://www.amazon.com/gp/product/B00X4WHP5E/ref=sv_devicesubnav_0).
+
+In order to get the most out of the project, many predictive language and data manipulation libraries have been loaded into R. Almost all of them are new to the user so it's worth taking the requisite time to read the syllabus and supporting documentation to get a firm handle on their capabilities and how they apply to the project.
+
+The plan of attack is as follows:
+
+1. Download the data. It is assumed already that the user has performed this operation and unzipped the files into a useable directory.
+2. Read in the three English language data sets and perform some cursory analysis on them.
+3. Capture a random subset of these data.
+4. Create a corpus from the data using the [TM library](https://cran.r-project.org/web/packages/tm/index.html).
+5. From the random subset above, review the N-Gram frequency for N = 1, 2 and 3.
+6. Plot these frequencies using standard density plots as well as the very fun text bubbles.
+
+After performing the above review we will be in a position to outline the strategy to create the predictive model.
+
+### Libraries
+
+Let's load the libraries. Many of these are based off the supporting text from the syllabus. Are all of them needed? Probably not. But there's no harm in loading them.
+
+```{r libraries}
+suppressMessages(library(LaF)) # to read large files as ASCII & sample while reading. Enhanced performance over `readLines`
+suppressMessages(library(tm)) # for text mining and corpus operations
+suppressMessages(library(SnowballC)) # for stemming root words
+suppressMessages(library(ggplot2)) # for plotting
+suppressMessages(library(RWeka)) # for tokenization. Need 64 bit java installed in you have a 64 bit machine.
+suppressMessages(library(quanteda)) # for word frequency and sparsity exploratory analysis
+suppressMessages(library(wordcloud)) # for additional exploratory analysis
+suppressMessages(library(tau)) # Quick identification of n-words that frequent together.
+suppressMessages(library(dplyr)) # for text cleaning and other mutations if needed
+suppressMessages(library(stringi))
+library(RColorBrewer) # to add a bit of color to life
+```
+
+## Reading Data
+
+We begin by loading the complete data set for each of the three English language data sources: blogs, twitter and news. In the process we'll use the command _iconv_ from the base package to convert each of the files from type "latin1" to "ASCII". This makes subsequent analyses more simple using the _stringi_ package.
+
+The news file is a bit more complex becuase it won't read each line completely unless we first open a connection using the _file_ command followed by _readLines_.
+
+```{r data}
+setwd("~/GitHub/Capstone/Data/final/en_US")
+blogs <- readLines("en_US.blogs.txt", encoding = "UTF-8") # read complete blogs file
+blogs <- iconv(blogs, "latin1", "ASCII", sub = "") # since we're here, let's clean the data.
+
+twitter <- readLines("en_US.twitter.txt", encoding = "UTF-8", skipNul=TRUE) # read twitter file
+twitter<- iconv(twitter, "latin1", "ASCII", sub = "")
+
+con <- file("en_US.news.txt", "rb") # connection needed because otherwise due to imcomplete final line (?), the file is not read completely
+news <- readLines(con, encoding = "UTF-8") # read complete news file.
+close(con)
+rm(con)
+news<- iconv(news, "latin1", "ASCII", sub = "")
+```
+
+## Exploratory Analysis
+
+The scope of the overarching project is to be able to predict a word given two preceeding words. Because of his it's important to understand not only the words that appear in the data but also which pairs and triples of words appear most frequently.
+
+To get an understanding of how this plays out we don't need to use all the data (despite it being loaded). Instead we'll take a subset of 1-3% of the supplied data, and perform the needed frequency and N-Gram analysis of this subset.
+
+Let's begin with a review of the total datasets. Using *stri_count_words* from the _stringi_ package we will review the number of words on each line, as well as the mean and max number of words on each line of text. Our summary will also include the total number of words, characters and lines in each of the three text files.
+
+We'll also take a look at the size of each of the three files for good measure.
+
+```{r explore1}
+
+WPL <- sapply(list(blogs,news,twitter),function(x) summary(stri_count_words(x))[c('Min.','Mean','Max.')])
+rownames(WPL) <- c('WPL_Min','WPL_Mean','WPL_Max')
+
+stats <- data.frame(
+  Dataset = c("blogs","news","twitter"),      
+  t(rbind(
+  sapply(list(blogs,news,twitter),stri_stats_general)[c('Lines','Chars'),],
+  Words <- sapply(list(blogs,news,twitter),stri_stats_latex)['Words',],
+  WPL)
+))
+head(stats)
+
+file.size("en_US.blogs.txt") * (1e-6) # In megabytes
+file.size("en_US.news.txt") * (1e-6) # In megabytes
+file.size("en_US.twitter.txt") * (1e-6) # In megabytes
+
+```
+
+## Sampling & Prediction Approach
+
+```{r sampling}
+blogs_sample_size   <- round(.02 * length(blogs), 0)
+news_sample_size    <- round(.02 * length(news), 0) 
+twitter_sample_size <- round(.02 * length(twitter), 0)
+set.seed(23234)
+all_sample <- c(sample(blogs, blogs_sample_size), 
+                sample(news, news_sample_size),
+                sample(twitter, twitter_sample_size)
+                )
+```
+
+## Corpus Construction and Tokenization
+
+It's time to take our sample and use it as the basis of our corpus.
+
+```{r corpus}
+corpus <- Corpus(VectorSource(all_sample)) # Build a volatile corpus
+corpus <- tm_map(corpus, removeNumbers) # remove numbers
+corpus <- tm_map(corpus, removePunctuation) # remove punctuation
+corpus <- tm_map(corpus, content_transformer(tolower)) # convert all characters to lower case
+corpus <- tm_map(corpus, stripWhitespace) # strip white space
+corpus <- tm_map(corpus, stemDocument) # convert the doc to plain text
+```
+
+### Exploratory Analysis 2:
+
+
+```{r explore2}
+onegramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
+twogramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+threegramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
+
+dtm_onegram   <- DocumentTermMatrix(corpus, control=list(tokenize=onegramTokenizer))
+dtm_twogram   <- DocumentTermMatrix(corpus, control=list(tokenize=twogramTokenizer))
+dtm_threegram <- DocumentTermMatrix(corpus, control=list(tokenize=threegramTokenizer))
+```
+
+### Clean Data and Frequency Functions:
+```{r cleaning}
+
+
+plot_n_grams <- function(data, title, num) {
+  df2 <- data[order(-data$frequency),][1:num,] 
+  ggplot(df2, aes(x = seq(1:num), y = frequency)) +
+    geom_bar(stat = "identity", fill = "red", colour = "black", width = 0.80) +
+    coord_cartesian(xlim = c(0, num+1)) +
+    labs(title = title) +
+    xlab("Words") +
+    ylab("Count") +
+    scale_x_discrete(breaks = seq(1, num, by = 1), labels = df2$word[1:num]) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+```
+
+### Word Clouds and Corpus:
+
+```{r word clouds}
+rm(blogs); rm(news); rm(twitter)
+
+pal <- brewer.pal(8,"Dark2")
+
+wordcloud(corpus, max.words = 75, random.order = FALSE, colors = pal)
+
+plot_n_grams(uni.gram, "Top 1-Grams", 20)
+plot_n_grams(bi.gram, "Top 2-Grams", 20)
+plot_n_grams(tri.gram, "Top 3-Grams", 20)
+```
+
+## Prediction & Shiny:
+
