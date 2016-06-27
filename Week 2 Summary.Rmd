@@ -43,13 +43,13 @@ After performing the above review we will be in a position to outline the strate
 Let's load the libraries. Many of these are based off the supporting text from the syllabus. Are all of them needed? Probably not. But there's no harm in loading them.
 
 ```{r libraries}
-library(RWeka)
-library(dplyr)
-library(stringi)
-library(tm)
-library(wordcloud)
-library(RColorBrewer)
-library(ggplot2)
+suppressMessages(library(RWeka))
+suppressMessages(library(dplyr))
+suppressMessages(library(stringi))
+suppressMessages(library(tm))
+suppressMessages(library(wordcloud))
+suppressMessages(library(RColorBrewer))
+suppressMessages(library(ggplot2))
 ```
 
 ## Reading Data
@@ -133,6 +133,8 @@ uni_tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
 bi_tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
 tri_tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
 
+options(mc.cores=1)
+
 uni_matrix <- TermDocumentMatrix(corpus, control = list(tokenize = uni_tokenizer))
 bi_matrix <- TermDocumentMatrix(corpus, control = list(tokenize = bi_tokenizer))
 tri_matrix <- TermDocumentMatrix(corpus, control = list(tokenize = tri_tokenizer))
@@ -162,10 +164,9 @@ plot_n_grams <- function(data, title, num) {
     geom_bar(stat = "identity", fill = "blue", colour = "black", width = 0.80) +
     coord_cartesian(xlim = c(0, num+1)) +
     labs(title = title) +
-    xlab("Words") +
     ylab("Count") +
-    scale_x_discrete(breaks = seq(1, num, by = 1), labels = df2$word[1:num]) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    scale_x_discrete(name = "Words", breaks = seq(1, num, by = 1), labels = df2$word[1:num]) +
+    theme(axis.text.x = element_text(face = "plain", color = "black", angle = 90))
 }
 
 plot_n_grams(uni_corpus_freq,"Top Unigrams",20)
