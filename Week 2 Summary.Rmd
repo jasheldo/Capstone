@@ -159,14 +159,14 @@ tri_corpus_freq <- data.frame(word=names(tri_corpus_freq), frequency=tri_corpus_
 head(tri_corpus_freq)
 
 plot_n_grams <- function(data, title, num) {
-  df2 <- data[order(-data$frequency),][1:num,] 
-  ggplot(df2, aes(x = seq(1:num), y = frequency)) +
-    geom_bar(stat = "identity", fill = "blue", colour = "black", width = 0.80) +
+  df2 <- data[order(data$frequency, decreasing = TRUE),]
+  ggplot(df2[1:num,], aes(reorder(word, -frequency),frequency)) +
+    geom_bar(stat = "identity", fill = "blue", colour = "black", width = 0.80) + 
     coord_cartesian(xlim = c(0, num+1)) +
     labs(title = title) +
     ylab("Count") +
-    scale_x_discrete(name = "Words", breaks = seq(1, num, by = 1), labels = df2$word[1:num]) +
-    theme(axis.text.x = element_text(face = "plain", color = "black", angle = 90))
+    xlab("word") + 
+    theme(axis.text.x = element_text(angle = 45))
 }
 
 plot_n_grams(uni_corpus_freq,"Top Unigrams",20)
