@@ -59,7 +59,7 @@ We begin by loading the complete data set for each of the three English language
 The news file is a bit more complex because it won't read the file completely unless we first open a connection using the _file_ command followed by _readLines_.
 
 ```{r data}
-setwd("C:/Users/jsheld01/Downloads/Coursera-SwiftKey/final/en_US")
+setwd("~/Downloads/final/en_US")
 blogs <- readLines("en_US.blogs.txt", encoding = "UTF-8", skipNul = TRUE)
 con <- file("en_US.news.txt", "rb")
 news <- readLines(con, encoding = "UTF-8", skipNul = TRUE)
@@ -111,13 +111,18 @@ sample_data <- c(sample(blogs, round(0.02 * length(blogs),0)),
 
 It's time to take our sample and use it as the basis of our corpus. We create a Volatile Corpus and perform a few cleanup procedures. It should be noted that we combined our random samples into one data file. The scope of this project is to create one predictive model. To that end we are producing only one corpus.
 
-It should be noted that we have yet to remove offensive words. For purposes of this exploratory analysis it's okay but certainly something to keep in mind as we move closer to the final goal.
+Our final step in creating the corpus is to remove the profanity from the corpus.  To do that we're going to rely on the list of offensive words from Luis von Ahn's [reserach group at CMU](http://www.cs.cmu.edu/~biglou/resources/).
 
 ```{r corpus}
 corpus <- VCorpus(VectorSource(sample_data)) # Create Volatile Corpus
 corpus <- tm_map(corpus, content_transformer(tolower)) # Change all characters to lower case
 corpus <- tm_map(corpus, removePunctuation) # remove punctuation
 corpus <- tm_map(corpus, removeNumbers) # remove numbers
+
+options(mc.cores = 1)
+bad.words <- readLines("~/Downloads/bad-words.txt")
+corpus <- tm_map(corpus, removeWords, bad.words)
+
 corpus <- tm_map(corpus, stripWhitespace) # remove whitespace
 corpus <- tm_map(corpus, PlainTextDocument) # convert the document to plain text
 ```
@@ -172,7 +177,7 @@ plot_n_grams <- function(data, title, num) {
 plot_n_grams(uni_corpus_freq,"Top Unigrams",20)
 plot_n_grams(bi_corpus_freq,"Top Bigrams",20)
 plot_n_grams(tri_corpus_freq,"Top Trigrams",20)
-wordcloud(corpus, max.words = 75, random.order = FALSE, colors = brewer.pal(8,"Dark2"))
+wordcloud(corpus, max.words = 750, random.order = FALSE, colors = brewer.pal(8,"Dark2"))
 ```
 
 
